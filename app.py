@@ -10,42 +10,64 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  THE "NUCLEAR" CSS OVERRIDE
+#  THE "NUCLEAR" CSS OVERRIDE - RECALIBRATED
 # ============================================================
 
 st.markdown("""
     <style>
+    /* 1. Kill Top Bar and Decoration */
     header[data-testid="stHeader"], [data-testid="stDecoration"] {
         background: rgba(0,0,0,0) !important;
         background-color: transparent !important;
     }
 
+    /* 2. Global Dark Theme */
     .stApp {
         background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
+    /* 3. The Sidebar - Forced Visibility */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
     
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
+    /* Make Sidebar Headers and Labels White */
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span {
         color: #ffffff !important;
     }
 
+    /* 4. EXPANDER: Transparent & White Text */
     div[data-testid="stExpander"] {
         background-color: transparent !important;
         border: 1px solid #696969 !important;
     }
     div[data-testid="stExpander"] details summary {
-        background-color: transparent !important;
         color: #ffffff !important;
     }
-    div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
-        background-color: transparent !important;
+
+    /* 5. THE UPLOADER FIX: No more white-on-white */
+    [data-testid="stFileUploader"] section {
+        background-color: #333333 !important; /* Dark background */
+        border: 1px dashed #ffffff !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stFileUploader"] label {
+        color: #ffffff !important;
     }
 
+    /* 6. Code Blocks (The Prompt Library) */
+    code {
+        color: #00ff00 !important; /* Neon green for visibility */
+        background-color: #1a1a1a !important;
+        border: 1px solid #444 !important;
+    }
+
+    /* 7. Buttons */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
@@ -57,14 +79,6 @@ st.markdown("""
     }
     button:hover {
         background-color: #ffffff !important;
-    }
-
-    .stFileUploader section {
-        background-color: #d3d3d3 !important;
-    }
-    code {
-        color: #8B0000 !important;
-        background-color: #eeeeee !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -138,14 +152,16 @@ def main():
         st.markdown("### 🖋️ Typography")
         main_size = st.slider("Main Text Size", 8, 30, 12)
         note_size = main_size - 1
-        note_font = "Courier New" # Forced default
+        note_font = "Courier New"
 
         st.divider()
         st.markdown("### 🖼️ Illustrations")
-        uploads = st.file_uploader("Assets", accept_multiple_files=True, label_visibility="collapsed")
+        # Second illustrations section (uploader)
+        uploads = st.file_uploader("Upload Assets", accept_multiple_files=True)
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
+                st.write(f"Ref: {up.name}")
                 st.code(f"[IMG: {up.name}]")
 
     with st.expander("📖 HOW TO COMPOSE YOUR TEXT"):
@@ -154,9 +170,9 @@ def main():
         * `[TITLE: Text]` → Gothic Title (using Title Color).
         * `[SUB: Text]` → Gothic Subtitle (using Subtitle Color).
         * `[IMG: filename.png]` → Inserts an illustration.
-        * `[NOTE_START]` → Automatically inserts `Separator.png` and starts smaller text.
-        * `[NOTE_END]` → Automatically inserts `Separator.png` and ends the commentary section.
-        * **Normal Text** → Formatted at **{main_size}pt**.
+        * `[NOTE_START]` → Inserts `Separator.png` and starts **{note_size}pt** text.
+        * `[NOTE_END]` → Inserts `Separator.png` and returns to **{main_size}pt** text.
+        * **Standard Text** → Just type! It uses **{main_size}pt**.
         """)
 
     st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
@@ -182,7 +198,6 @@ def main():
                 line = line.strip()
                 if not line: continue
                 
-                # Commentary Toggle
                 if line == "[NOTE_START]":
                     in_commentary = True
                     if "Separator.png" in st.session_state.img_lib:
@@ -218,7 +233,6 @@ def main():
                     p = cell_l.add_paragraph(line)
                     run = p.runs[0] if p.runs else p.add_run(line)
                     run.font.name = note_font
-                    # Apply smaller size if inside the start/end tags
                     run.font.size = Pt(note_size) if in_commentary else Pt(main_size)
                     p.paragraph_format.first_line_indent = 0
             
