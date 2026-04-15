@@ -60,19 +60,30 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* 5. CODE BLOCKS / COPY BUTTONS: Gray Scale Fix */
-    code {
-        color: #ffffff !important;
-        background-color: #404040 !important; /* Dark Gray */
-        border: 1px solid #696969 !important;
-    }
+   /* 5. CODE BLOCKS / COPY BUTTONS: Total Blackout */
     div[data-testid="stCodeBlock"] {
-        background-color: #404040 !important;
+        background-color: #000000 !important;
+        border: 1px solid #696969 !important;
+        border-radius: 4px;
     }
-    /* Target the copy button specifically */
+    div[data-testid="stCodeBlock"] code {
+        color: #ffffff !important;
+        background-color: #000000 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+    /* The container around the code */
+    div[data-testid="stCodeBlock"] > div {
+        background-color: #000000 !important;
+    }
+    /* The Copy Button - Forced to Black */
     div[data-testid="stCodeBlock"] button {
         background-color: #000000 !important;
         color: white !important;
+        border: 1px solid #696969 !important;
+    }
+    div[data-testid="stCodeBlock"] button:hover {
+        background-color: #2b2b2b !important;
+        border: 1px solid #ffffff !important;
     }
 
     /* 6. Uploader Section */
