@@ -10,37 +10,63 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  GOTHIC UI STYLING (Gray Scales & Courier New)
+#  GOTHIC UI STYLING (Industrial Grayscale)
 # ============================================================
 
 st.markdown("""
     <style>
+    /* Hide the default Streamlit header bar or match its color */
+    header[data-testid="stHeader"] {
+        background-color: #2b2b2b !important;
+    }
+
     /* Main background: Dark Gray */
     .stApp {
         background-color: #2b2b2b;
-        color: #d3d3d3;
+        color: #ffffff;
         font-family: 'Courier New', Courier, monospace;
     }
+    
     /* Sidebar: Lighter Gray */
     [data-testid="stSidebar"] {
         background-color: #404040;
     }
-    /* Input Boxes and Widgets */
-    .stTextArea textarea, .stFileUploader section {
-        background-color: #d3d3d3 !important;
-        color: #000000 !important;
+
+    /* All text labels to be White */
+    label, .stMarkdown p, .stText, p, span {
+        color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
-    /* Headers */
-    h1, h2, h3 {
-        color: #ffffff !important;
+
+    /* Uploader Text specifically */
+    [data-testid="stFileUploaderDropzoneInstructions"] {
+        color: #000000 !important; /* Keep the 'Browse files' text dark for contrast on the light-gray box */
     }
+
+    /* Input Boxes: Light Gray background */
+    .stTextArea textarea, .stFileUploader section {
+        background-color: #d3d3d3 !important;
+        border: 1px solid #ffffff !important;
+    }
+
     /* Buttons */
     .stButton>button {
         background-color: #696969;
         color: white;
-        border: 1px solid #d3d3d3;
+        border: 2px solid #ffffff;
         font-family: 'Courier New', Courier, monospace;
+        border-radius: 0px;
+    }
+    
+    .stButton>button:hover {
+        background-color: #8B0000;
+        border: 2px solid #8B0000;
+    }
+
+    /* Ref Codes */
+    code {
+        color: #8B0000 !important;
+        background-color: #eeeeee !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -56,9 +82,9 @@ def get_gothic_title(text, color_rgb, font_size=80):
         font = ImageFont.load_default()
     
     left, top, right, bottom = font.getbbox(text)
-    img = Image.new('RGBA', (right-left + 40, bottom-top + 40), (255, 255, 255, 0))
+    img = Image.new('RGBA', (right-left + 60, bottom-top + 40), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
-    draw.text((20, 20), text, font=font, fill=color_rgb)
+    draw.text((30, 10), text, font=font, fill=color_rgb)
     
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -94,15 +120,16 @@ def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
     inline.getparent().replace(inline, anchor)
 
 # ============================================================
-#  MAIN APP
+#  MAIN INTERFACE
 # ============================================================
 
 def main():
-    # Render the Main Title as a PNG in the UI for consistent Gothic feel
+    # Website Header
     title_png = get_gothic_title("Gothic Book Generator", (255, 255, 255), 100)
-    st.image(title_png, use_container_width=True)
+    st.image(title_png)
 
-    if 'img_lib' not in st.session_state: st.session_state.img_lib = {}
+    if 'img_lib' not in st.session_state: 
+        st.session_state.img_lib = {}
 
     with st.sidebar:
         st.header("🎨 Styling")
@@ -115,10 +142,11 @@ def main():
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
-                st.code(f"[IMG: {up.name}]")
+                st.write(f"Ref: `{up.name}`")
+                st.code(f"[IMG: {up.name}]", language="text")
 
     st.subheader("1. Compile Chapters")
-    notepads = st.file_uploader("Upload .txt Chapters", accept_multiple_files=True)
+    notepads = st.file_uploader("Upload .txt Notepads", accept_multiple_files=True)
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
         doc = Document()
@@ -129,12 +157,12 @@ def main():
 
         pg_num = 1
         for note in notepads:
+            # Sort files by name if multiple are uploaded
             lines = note.read().decode("utf-8").split('\n')
             
             table = doc.add_table(rows=2, cols=2)
             table.autofit = False
             
-            # Left virtual page content
             cell_l = table.rows[0].cells[0]
             current_y = 2.0
             
@@ -155,11 +183,10 @@ def main():
                         current_y += 6.0
                 else:
                     p = cell_l.add_paragraph(line)
-                    run = p.runs[0] if p.runs else p.add_run(line)
-                    run.font.name = 'Courier New' # Word output font
+                    if p.runs: p.runs[0].font.name = 'Courier New'
                     p.paragraph_format.first_line_indent = 0
             
-            # Page Numbering
+            # Virtual Page Numbers
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             
