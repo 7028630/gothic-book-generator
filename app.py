@@ -66,7 +66,7 @@ st.markdown("""
     }
 
     button[kind="secondary"]:hover, button[kind="primary"]:hover {
-        background-color: #ffffff !important;
+        background-color: #000000 !important;
         border: 2px solid #000000 !important;
     }
     
