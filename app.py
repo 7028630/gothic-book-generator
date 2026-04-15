@@ -10,59 +10,69 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  GOTHIC UI STYLING (Industrial Grayscale)
+#  GOTHIC UI STYLING (The "No Lies" Final CSS)
 # ============================================================
 
 st.markdown("""
     <style>
-    /* Hide the default Streamlit header bar or match its color */
+    /* Hide the top header bar and that broken icon text */
     header[data-testid="stHeader"] {
         background-color: #2b2b2b !important;
     }
+    
+    /* Hides the "keyboard_double_arrow" text appearing on the sidebar button */
+    button[data-testid="stSidebarCollapseButton"] div {
+        display: none !important;
+    }
 
-    /* Main background: Dark Gray */
+    /* Main background */
     .stApp {
         background-color: #2b2b2b;
         color: #ffffff;
         font-family: 'Courier New', Courier, monospace;
     }
     
-    /* Sidebar: Lighter Gray */
+    /* Sidebar */
     [data-testid="stSidebar"] {
         background-color: #404040;
     }
 
-    /* All text labels to be White */
+    /* Force all text labels to White */
     label, .stMarkdown p, .stText, p, span {
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* Uploader Text specifically */
-    [data-testid="stFileUploaderDropzoneInstructions"] {
-        color: #000000 !important; 
+    /* The "Browse files" text inside the uploader - keeps it dark so it's readable on gray */
+    [data-testid="stFileUploaderDropzoneInstructions"] div {
+        color: #000000 !important;
     }
 
-    /* Input Boxes: Light Gray background */
+    /* Input Boxes: Light Gray */
     .stTextArea textarea, .stFileUploader section {
         background-color: #d3d3d3 !important;
         border: 1px solid #ffffff !important;
     }
 
-    /* Buttons - Forced Black Text */
-    .stButton>button {
-        background-color: #696969;
-        color: #000000 !important; /* Always Black */
-        border: 2px solid #ffffff;
-        font-family: 'Courier New', Courier, monospace;
-        border-radius: 0px;
-        font-weight: bold;
+    /* BUTTONS - Hardcore Black Text Override */
+    div.stButton > button {
+        background-color: #696969 !important;
+        border: 2px solid #ffffff !important;
+        border-radius: 0px !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        height: auto;
+        padding: 10px 20px;
+    }
+
+    /* This targets the actual text inside the button specifically */
+    div.stButton > button p, div.stButton > button div {
+        color: #000000 !important;
+        font-weight: 900 !important;
     }
     
-    .stButton>button:hover {
-        background-color: #ffffff; /* Contrast shift on hover */
-        color: #000000 !important; /* Stay Black */
-        border: 2px solid #000000;
+    div.stButton > button:hover {
+        background-color: #ffffff !important;
+        border: 2px solid #000000 !important;
     }
 
     /* Ref Codes */
@@ -127,8 +137,11 @@ def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
 
 def main():
     # Website Header
-    title_png = get_gothic_title("Gothic Book Generator", (255, 255, 255), 100)
-    st.image(title_png)
+    try:
+        title_png = get_gothic_title("Gothic Book Generator", (255, 255, 255), 100)
+        st.image(title_png)
+    except:
+        st.title("Gothic Book Generator")
 
     if 'img_lib' not in st.session_state: 
         st.session_state.img_lib = {}
@@ -140,7 +153,8 @@ def main():
         
         st.divider()
         st.header("🖼️")
-        uploads = st.file_uploader("Upload Illustrations", accept_multiple_files=True)
+        # I removed the "Upload Illustrations" label text from the code below to prevent overlap
+        uploads = st.file_uploader("", accept_multiple_files=True, key="uploader_1")
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
@@ -148,7 +162,8 @@ def main():
                 st.code(f"[IMG: {up.name}]", language="text")
 
     st.subheader("1. Compile Chapters")
-    notepads = st.file_uploader("Upload .txt Notepads", accept_multiple_files=True)
+    # Removed the second label string to stop the overlap
+    notepads = st.file_uploader("", accept_multiple_files=True, key="uploader_2")
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
         doc = Document()
@@ -160,10 +175,8 @@ def main():
         pg_num = 1
         for note in notepads:
             lines = note.read().decode("utf-8").split('\n')
-            
             table = doc.add_table(rows=2, cols=2)
             table.autofit = False
-            
             cell_l = table.rows[0].cells[0]
             current_y = 2.0
             
@@ -187,10 +200,8 @@ def main():
                     if p.runs: p.runs[0].font.name = 'Courier New'
                     p.paragraph_format.first_line_indent = 0
             
-            # Virtual Page Numbers
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
             pg_num += 2
             doc.add_page_break()
 
