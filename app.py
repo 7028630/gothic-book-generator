@@ -15,28 +15,25 @@ from PIL import Image, ImageDraw, ImageFont
 
 st.markdown("""
     <style>
-    /* 1. Kill Top Bar, Decoration, and Header Background */
     header[data-testid="stHeader"], [data-testid="stDecoration"] {
         background: rgba(0,0,0,0) !important;
         background-color: transparent !important;
     }
 
-    /* 2. Global Dark Theme */
     .stApp {
         background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 3. The Sidebar & Text White-out */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
+    
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
         color: #ffffff !important;
     }
 
-    /* 4. EXPANDER FIX: Prevent Gray/White Blocks */
     div[data-testid="stExpander"] {
         background-color: transparent !important;
         border: 1px solid #696969 !important;
@@ -45,14 +42,10 @@ st.markdown("""
         background-color: transparent !important;
         color: #ffffff !important;
     }
-    div[data-testid="stExpander"] details summary:hover {
-        color: #8B0000 !important;
-    }
     div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
         background-color: transparent !important;
     }
 
-    /* 5. Buttons */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
@@ -66,7 +59,6 @@ st.markdown("""
         background-color: #ffffff !important;
     }
 
-    /* 6. Uploader */
     .stFileUploader section {
         background-color: #d3d3d3 !important;
     }
@@ -96,10 +88,6 @@ def get_gothic_asset(text, color_rgb, font_size=80):
     img.save(buf, format="PNG")
     buf.seek(0)
     return buf
-
-# ============================================================
-#  WORD ENGINE
-# ============================================================
 
 def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
     run = doc.add_paragraph().add_run()
@@ -143,16 +131,14 @@ def main():
         st.markdown("### 🎨 Colors")
         t_color = st.color_picker("Title Color", "#8B0000")
         s_color = st.color_picker("Subtitle Color", "#FFFFFF")
-        
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
         st.divider()
         st.markdown("### 🖋️ Typography")
         main_size = st.slider("Main Text Size", 8, 30, 12)
-        # Force Note Size to be one smaller
         note_size = main_size - 1
-        note_font = st.selectbox("Font Type", ["Courier New", "Georgia", "Times New Roman"], index=0)
+        note_font = "Courier New" # Forced default
 
         st.divider()
         st.markdown("### 🖼️ Illustrations")
@@ -167,9 +153,10 @@ def main():
         **Commands for your .txt file:**
         * `[TITLE: Text]` → Gothic Title (using Title Color).
         * `[SUB: Text]` → Gothic Subtitle (using Subtitle Color).
-        * `[SEP: filename.png]` → Pulls a specific separator image.
-        * `[IMG: filename.png]` → Pulls a standard illustration.
-        * **Standard Text** → Formatted in **{note_font}** at **{note_size}pt**.
+        * `[IMG: filename.png]` → Inserts an illustration.
+        * `[NOTE_START]` → Automatically inserts `Separator.png` and starts smaller text.
+        * `[NOTE_END]` → Automatically inserts `Separator.png` and ends the commentary section.
+        * **Normal Text** → Formatted at **{main_size}pt**.
         """)
 
     st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
@@ -189,11 +176,27 @@ def main():
             table.autofit = False
             cell_l = table.rows[0].cells[0]
             current_y = 2.0
+            in_commentary = False
             
             for line in lines:
                 line = line.strip()
                 if not line: continue
                 
+                # Commentary Toggle
+                if line == "[NOTE_START]":
+                    in_commentary = True
+                    if "Separator.png" in st.session_state.img_lib:
+                        add_floating_element(doc, st.session_state.img_lib["Separator.png"], 12, 1.5, current_y)
+                        current_y += 1.5
+                    continue
+                
+                if line == "[NOTE_END]":
+                    in_commentary = False
+                    if "Separator.png" in st.session_state.img_lib:
+                        add_floating_element(doc, st.session_state.img_lib["Separator.png"], 12, 1.5, current_y)
+                        current_y += 1.5
+                    continue
+
                 if line.startswith("[TITLE:"):
                     txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
                     add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
@@ -206,18 +209,17 @@ def main():
                     current_y += 2.0
                     for _ in range(2): cell_l.add_paragraph()
                 
-                elif line.startswith("[SEP:") or line.startswith("[IMG:"):
-                    name = re.search(r"\[(?:SEP|IMG): (.*?)\]", line).group(1)
+                elif line.startswith("[IMG:"):
+                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
                     if name in st.session_state.img_lib:
-                        # Separators typically sit centered, Illustrations float
-                        width = 12 if "SEP" in line else 6
-                        add_floating_element(doc, st.session_state.img_lib[name], width, 3, current_y)
-                        current_y += 3.0 if "SEP" in line else 6.5
+                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
+                        current_y += 6.5
                 else:
                     p = cell_l.add_paragraph(line)
                     run = p.runs[0] if p.runs else p.add_run(line)
                     run.font.name = note_font
-                    run.font.size = Pt(note_size)
+                    # Apply smaller size if inside the start/end tags
+                    run.font.size = Pt(note_size) if in_commentary else Pt(main_size)
                     p.paragraph_format.first_line_indent = 0
             
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
