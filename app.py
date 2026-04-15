@@ -10,72 +10,70 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  GOTHIC UI STYLING (The "No Lies" Final CSS)
+#  THE "NUCLEAR" CSS OVERRIDE
 # ============================================================
 
 st.markdown("""
     <style>
-    /* Hide the top header bar and that broken icon text */
-    header[data-testid="stHeader"] {
-        background-color: #2b2b2b !important;
-    }
-    
-    /* Hides the "keyboard_double_arrow" text appearing on the sidebar button */
-    button[data-testid="stSidebarCollapseButton"] div {
+    /* 1. Kill the Sidebar Icon Text */
+    button[data-testid="stSidebarCollapseButton"] span {
         display: none !important;
     }
+    button[data-testid="stSidebarCollapseButton"]::after {
+        content: "X"; /* Replace broken text with a simple X or nothing */
+        color: white;
+    }
 
-    /* Main background */
+    /* 2. Global Dark Theme */
     .stApp {
-        background-color: #2b2b2b;
-        color: #ffffff;
-        font-family: 'Courier New', Courier, monospace;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #404040;
-    }
-
-    /* Force all text labels to White */
-    label, .stMarkdown p, .stText, p, span {
+        background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* The "Browse files" text inside the uploader - keeps it dark so it's readable on gray */
-    [data-testid="stFileUploaderDropzoneInstructions"] div {
-        color: #000000 !important;
+    /* 3. The Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #404040 !important;
     }
 
-    /* Input Boxes: Light Gray */
-    .stTextArea textarea, .stFileUploader section {
-        background-color: #d3d3d3 !important;
-        border: 1px solid #ffffff !important;
-    }
-
-    /* BUTTONS - Hardcore Black Text Override */
-    div.stButton > button {
+    /* 4. THE BUTTONS: Absolute Black Text Force */
+    /* Target every possible state: hover, active, focus */
+    button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
         border-radius: 0px !important;
-        font-family: 'Courier New', Courier, monospace !important;
-        height: auto;
-        padding: 10px 20px;
     }
 
-    /* This targets the actual text inside the button specifically */
-    div.stButton > button p, div.stButton > button div {
+    /* Target the text inside the button specifically */
+    button[kind="secondary"] p, 
+    button[kind="primary"] p,
+    button div[data-testid="stMarkdownContainer"] p {
         color: #000000 !important;
         font-weight: 900 !important;
+        -webkit-text-fill-color: #000000 !important; /* For Safari/Chrome */
     }
-    
-    div.stButton > button:hover {
+
+    /* Button Hover State */
+    button[kind="secondary"]:hover, button[kind="primary"]:hover {
         background-color: #ffffff !important;
         border: 2px solid #000000 !important;
     }
+    
+    button[kind="secondary"]:hover p, button[kind="primary"]:hover p {
+        color: #000000 !important;
+    }
 
-    /* Ref Codes */
+    /* 5. Hide all default labels that cause overlap */
+    label[data-testid="stWidgetLabel"] {
+        display: none !important;
+    }
+
+    /* 6. Uploader Box Interior */
+    .stFileUploader section {
+        background-color: #d3d3d3 !important;
+    }
+    
+    /* 7. Code Snippets */
     code {
         color: #8B0000 !important;
         background-color: #eeeeee !important;
@@ -84,7 +82,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ============================================================
-#  GOTHIC ASSET GENERATORS
+#  ASSET GENERATORS
 # ============================================================
 
 def get_gothic_title(text, color_rgb, font_size=80):
@@ -104,7 +102,7 @@ def get_gothic_title(text, color_rgb, font_size=80):
     return buf
 
 # ============================================================
-#  WORD LAYOUT ENGINE
+#  WORD ENGINE
 # ============================================================
 
 def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
@@ -132,7 +130,7 @@ def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
     inline.getparent().replace(inline, anchor)
 
 # ============================================================
-#  MAIN INTERFACE
+#  MAIN APP
 # ============================================================
 
 def main():
@@ -147,23 +145,22 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.header("🎨")
-        t_color = st.color_picker("Gothic Color", "#8B0000")
+        st.write("🎨 **STYLING**")
+        t_color = st.color_picker("Color", "#8B0000", label_visibility="collapsed")
         rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
         st.divider()
-        st.header("🖼️")
-        # I removed the "Upload Illustrations" label text from the code below to prevent overlap
-        uploads = st.file_uploader("", accept_multiple_files=True, key="uploader_1")
+        st.write("🖼️ **IMAGE RECEPTOR**")
+        # label_visibility="collapsed" is the official way to stop overlaps
+        uploads = st.file_uploader("Illustrations", accept_multiple_files=True, label_visibility="collapsed")
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
                 st.write(f"Ref: `{up.name}`")
                 st.code(f"[IMG: {up.name}]", language="text")
 
-    st.subheader("1. Compile Chapters")
-    # Removed the second label string to stop the overlap
-    notepads = st.file_uploader("", accept_multiple_files=True, key="uploader_2")
+    st.write("🏛️ **1. COMPILE CHAPTERS**")
+    notepads = st.file_uploader("Notepads", accept_multiple_files=True, label_visibility="collapsed")
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
         doc = Document()
