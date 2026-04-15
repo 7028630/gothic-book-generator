@@ -19,36 +19,41 @@ st.markdown("""
     header[data-testid="stHeader"], [data-testid="stDecoration"] {
         background: rgba(0,0,0,0) !important;
         background-color: transparent !important;
-        display: none;
     }
 
-    /* 2. Kill Sidebar Collapse Text */
-    button[data-testid="stSidebarCollapseButton"] span {
-        display: none !important;
-    }
-    button[data-testid="stSidebarCollapseButton"]::after {
-        content: "X"; 
-        color: white;
-    }
-
-    /* 3. Global Dark Theme */
+    /* 2. Global Dark Theme */
     .stApp {
         background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 4. The Sidebar & Sidebar Text White-out */
+    /* 3. The Sidebar & Sidebar Text White-out */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
     
-    /* Force all sidebar labels and text to 100% White */
     [data-testid="stSidebar"] .stText, 
     [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p,
     [data-testid="stSidebar"] span {
         color: #ffffff !important;
+    }
+
+    /* 4. EXPANDER FIXED: Never turns white */
+    div[data-testid="stExpander"] {
+        background-color: transparent !important;
+        border: 1px solid #696969 !important;
+    }
+    div[data-testid="stExpander"] details {
+        background-color: transparent !important;
+    }
+    div[data-testid="stExpander"] summary {
+        background-color: transparent !important;
+        color: #ffffff !important;
+    }
+    div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+        background-color: transparent !important;
     }
 
     /* 5. Buttons */
@@ -66,11 +71,11 @@ st.markdown("""
     }
 
     button[kind="secondary"]:hover, button[kind="primary"]:hover {
-        background-color: #000000 !important;
+        background-color: #ffffff !important;
         border: 2px solid #000000 !important;
     }
     
-    /* 6. File Uploader */
+    /* 6. File Uploader Box */
     .stFileUploader section {
         background-color: #d3d3d3 !important;
     }
@@ -93,7 +98,7 @@ def get_gothic_asset(text, color_rgb, font_size=80):
         font = ImageFont.load_default()
     
     left, top, right, bottom = font.getbbox(text)
-    # Transparent background (0 alpha) for Word
+    # Transparent background for PNGs
     img = Image.new('RGBA', (right-left + 60, bottom-top + 40), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     draw.text((30, 10), text, font=font, fill=color_rgb)
@@ -104,7 +109,7 @@ def get_gothic_asset(text, color_rgb, font_size=80):
     return buf
 
 # ============================================================
-#  WORD ENGINE
+#  WORD ENGINE (FLOATING LOGIC)
 # ============================================================
 
 def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
@@ -146,97 +151,19 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.markdown("🎨")
-        st.write("_")
-        t_color = st.color_picker("Title Color", "#8B0000", key="t_cp")
-        st.write("_")
-        s_color = st.color_picker("Subtitle Color", "#FFFFFF", key="s_cp")
+        st.markdown("### 🎨 Colors")
+        st.write("Title Color")
+        t_color = st.color_picker("T", "#8B0000", key="t_c", label_visibility="collapsed")
+        st.write("Subtitle Color")
+        s_color = st.color_picker("S", "#FFFFFF", key="s_c", label_visibility="collapsed")
         
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
         st.divider()
-        st.markdown("🖋️")
-        note_size = st.slider("Letter Size", 8, 30, 12)
-        note_font = st.selectbox("Letter Type", ["Courier New", "Times New Roman", "Georgia", "Arial"])
+        st.markdown("### 🖋️ Note Typography")
+        note_size = st.slider("Letter Size", 8, 36, 12)
+        note_font = st.selectbox("Letter Type", ["Courier New", "Georgia", "Times New Roman", "Arial"])
 
         st.divider()
-        st.markdown("🖼️")
-        uploads = st.file_uploader("Upload Images", accept_multiple_files=True)
-        if uploads:
-            for up in uploads:
-                st.session_state.img_lib[up.name] = up
-                st.code(f"[IMG: {up.name}]")
-
-    # Documentation section for the user
-    with st.expander("❓ HOW TO COMPOSE YOUR TEXT"):
-        st.markdown("""
-        **Commands for your .txt file:**
-        * `[TITLE: Text]` → Inserts a Gothic Title using the Title Color.
-        * `[SUB: Text]` → Inserts a Gothic Subtitle using the Subtitle Color.
-        * `[IMG: filename.png]` → Inserts an image you uploaded in the sidebar.
-        * **Standard Text** → Automatically formatted using your **Note Typography** settings.
-        """)
-
-    st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
-    notepads = st.file_uploader("Main Content", accept_multiple_files=True, label_visibility="collapsed")
-
-    if notepads and st.button("🚀 Build A4 Horizontal Book"):
-        doc = Document()
-        section = doc.sections[0]
-        section.orientation = WD_ORIENT.LANDSCAPE
-        section.page_width, section.page_height = Cm(29.7), Cm(21.0)
-        section.left_margin = section.right_margin = section.top_margin = section.bottom_margin = Cm(1.5)
-
-        pg_num = 1
-        for note in notepads:
-            lines = note.read().decode("utf-8").split('\n')
-            table = doc.add_table(rows=2, cols=2)
-            table.autofit = False
-            cell_l = table.rows[0].cells[0]
-            current_y = 2.0
-            
-            for line in lines:
-                line = line.strip()
-                if not line: continue
-                
-                # Title Logic
-                if line.startswith("[TITLE:"):
-                    txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 85), 10, 2, current_y)
-                    current_y += 3.5
-                    for _ in range(4): cell_l.add_paragraph()
-
-                # Subtitle Logic
-                elif line.startswith("[SUB:"):
-                    txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 55), 7, 2, current_y)
-                    current_y += 2.0
-                    for _ in range(2): cell_l.add_paragraph()
-                
-                # Image Logic
-                elif line.startswith("[IMG:"):
-                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
-                    if name in st.session_state.img_lib:
-                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
-                        current_y += 6.5
-                
-                # Normal Note Text
-                else:
-                    p = cell_l.add_paragraph(line)
-                    run = p.runs[0] if p.runs else p.add_run(line)
-                    run.font.name = note_font
-                    run.font.size = Pt(note_size)
-                    p.paragraph_format.first_line_indent = 0
-            
-            table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
-            table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
-            pg_num += 2
-            doc.add_page_break()
-
-        out = io.BytesIO()
-        doc.save(out)
-        st.download_button("📥 Download Book", out.getvalue(), "gothic_spreads.docx")
-
-if __name__ == "__main__":
-    main()
+        st.markdown
