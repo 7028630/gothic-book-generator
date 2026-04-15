@@ -15,65 +15,61 @@ from PIL import Image, ImageDraw, ImageFont
 
 st.markdown("""
     <style>
-    /* 1. Kill the Sidebar Icon Text */
+    /* Kill the Top Bar / Header */
+    header[data-testid="stHeader"] {
+        background: rgba(0,0,0,0) !important;
+        background-color: rgba(0,0,0,0) !important;
+    }
+
+    /* Kill the Sidebar Icon Text */
     button[data-testid="stSidebarCollapseButton"] span {
         display: none !important;
     }
     button[data-testid="stSidebarCollapseButton"]::after {
-        content: "X"; /* Replace broken text with a simple X or nothing */
+        content: "X"; 
         color: white;
     }
 
-    /* 2. Global Dark Theme */
+    /* Global Dark Theme */
     .stApp {
         background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 3. The Sidebar */
+    /* The Sidebar */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
 
-    /* 4. THE BUTTONS: Absolute Black Text Force */
-    /* Target every possible state: hover, active, focus */
+    /* THE BUTTONS: Absolute Black Text Force */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
         border-radius: 0px !important;
     }
 
-    /* Target the text inside the button specifically */
     button[kind="secondary"] p, 
     button[kind="primary"] p,
     button div[data-testid="stMarkdownContainer"] p {
         color: #000000 !important;
         font-weight: 900 !important;
-        -webkit-text-fill-color: #000000 !important; /* For Safari/Chrome */
+        -webkit-text-fill-color: #000000 !important;
     }
 
-    /* Button Hover State */
     button[kind="secondary"]:hover, button[kind="primary"]:hover {
         background-color: #ffffff !important;
         border: 2px solid #000000 !important;
     }
     
-    button[kind="secondary"]:hover p, button[kind="primary"]:hover p {
-        color: #000000 !important;
-    }
-
-    /* 5. Hide all default labels that cause overlap */
     label[data-testid="stWidgetLabel"] {
         display: none !important;
     }
 
-    /* 6. Uploader Box Interior */
     .stFileUploader section {
         background-color: #d3d3d3 !important;
     }
     
-    /* 7. Code Snippets */
     code {
         color: #8B0000 !important;
         background-color: #eeeeee !important;
@@ -85,8 +81,9 @@ st.markdown("""
 #  ASSET GENERATORS
 # ============================================================
 
-def get_gothic_title(text, color_rgb, font_size=80):
+def get_gothic_asset(text, color_rgb, font_size=80):
     try:
+        # Using the same logic for both Title and Subtitle
         font = ImageFont.truetype("Friedolin.ttf", font_size)
     except:
         font = ImageFont.load_default()
@@ -134,9 +131,8 @@ def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
 # ============================================================
 
 def main():
-    # Website Header
     try:
-        title_png = get_gothic_title("Gothic Book Generator", (255, 255, 255), 100)
+        title_png = get_gothic_asset("Gothic Book Generator", (255, 255, 255), 100)
         st.image(title_png)
     except:
         st.title("Gothic Book Generator")
@@ -145,13 +141,22 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.write("🎨")
-        t_color = st.color_picker("Color", "#8B0000", label_visibility="collapsed")
-        rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+        st.subheader("Colors")
+        st.write("Title Color")
+        t_color = st.color_picker("Title Color", "#8B0000", key="t_col", label_visibility="collapsed")
+        st.write("Subtitle Color")
+        s_color = st.color_picker("Subtitle Color", "#FFFFFF", key="s_col", label_visibility="collapsed")
         
+        rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+        rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+
         st.divider()
-        st.write("🖼️")
-        # label_visibility="collapsed" is the official way to stop overlaps
+        st.subheader("Note Typography")
+        note_font_size = st.slider("Note Font Size", 8, 24, 12)
+        note_font_type = st.selectbox("Note Font Style", ["Courier New", "Georgia", "Times New Roman", "Arial"])
+
+        st.divider()
+        st.subheader("Illustrations")
         uploads = st.file_uploader("Illustrations", accept_multiple_files=True, label_visibility="collapsed")
         if uploads:
             for up in uploads:
@@ -159,7 +164,17 @@ def main():
                 st.write(f"Ref: `{up.name}`")
                 st.code(f"[IMG: {up.name}]", language="text")
 
-    st.write("🏛️ **UPLOAD MAIN TEXT AS ONE .TXT FILE**")
+    # Documentation Section
+    with st.expander("📖 HOW TO USE (PULLING ASSETS)"):
+        st.markdown("""
+        Write your `.txt` file using these tags to trigger images and formatting:
+        * **Titles:** `[TITLE: Your Text]` - Uses the Title Color.
+        * **Subtitles:** `[SUB: Your Text]` - Uses the Subtitle Color.
+        * **Images:** `[IMG: filename.jpg]` - Pulls the uploaded image from the sidebar.
+        * **Separators/Notes:** Regular text will be formatted as "Notes" using the font settings in the sidebar.
+        """)
+
+    st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
     notepads = st.file_uploader("Notepads", accept_multiple_files=True, label_visibility="collapsed")
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
@@ -183,9 +198,15 @@ def main():
                 
                 if line.startswith("[TITLE:"):
                     txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_title(txt, rgb), 8, 2, current_y)
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 8, 2, current_y)
                     current_y += 3.0
                     for _ in range(4): cell_l.add_paragraph()
+
+                elif line.startswith("[SUB:"):
+                    txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
+                    current_y += 2.0
+                    for _ in range(2): cell_l.add_paragraph()
                 
                 elif line.startswith("[IMG:"):
                     name = re.search(r"\[IMG: (.*?)\]", line).group(1)
@@ -194,7 +215,9 @@ def main():
                         current_y += 6.0
                 else:
                     p = cell_l.add_paragraph(line)
-                    if p.runs: p.runs[0].font.name = 'Courier New'
+                    run = p.runs[0] if p.runs else p.add_run(line)
+                    run.font.name = note_font_type
+                    run.font.size = Pt(note_font_size)
                     p.paragraph_format.first_line_indent = 0
             
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
