@@ -33,30 +33,34 @@ st.markdown("""
         background-color: #404040 !important;
     }
     
+    /* Force all sidebar labels and text to 100% White */
     [data-testid="stSidebar"] .stText, 
     [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span {
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] .stMarkdown {
         color: #ffffff !important;
     }
 
-    /* 4. EXPANDER FIXED: Never turns white */
+    /* 4. EXPANDER FIX: Keep it dark/transparent, text white */
     div[data-testid="stExpander"] {
-        background-color: transparent !important;
+        background-color: rgba(0,0,0,0) !important;
         border: 1px solid #696969 !important;
     }
-    div[data-testid="stExpander"] details {
+    div[data-testid="stExpander"] > details {
         background-color: transparent !important;
     }
-    div[data-testid="stExpander"] summary {
+    div[data-testid="stExpander"] > details > summary {
         background-color: transparent !important;
         color: #ffffff !important;
     }
+    /* This prevents the "gray block of nothing" by ensuring internal content is visible */
     div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
         background-color: transparent !important;
+        color: #ffffff !important;
     }
 
-    /* 5. Buttons */
+    /* 5. Buttons: Black Text Force */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
@@ -98,7 +102,7 @@ def get_gothic_asset(text, color_rgb, font_size=80):
         font = ImageFont.load_default()
     
     left, top, right, bottom = font.getbbox(text)
-    # Transparent background for PNGs
+    # Transparent background (Alpha 0)
     img = Image.new('RGBA', (right-left + 60, bottom-top + 40), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     draw.text((30, 10), text, font=font, fill=color_rgb)
@@ -109,7 +113,7 @@ def get_gothic_asset(text, color_rgb, font_size=80):
     return buf
 
 # ============================================================
-#  WORD ENGINE (FLOATING LOGIC)
+#  WORD ENGINE
 # ============================================================
 
 def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
@@ -153,17 +157,91 @@ def main():
     with st.sidebar:
         st.markdown("### 🎨 Colors")
         st.write("Title Color")
-        t_color = st.color_picker("T", "#8B0000", key="t_c", label_visibility="collapsed")
+        t_color = st.color_picker("T", "#8B0000", key="t_cp", label_visibility="collapsed")
         st.write("Subtitle Color")
-        s_color = st.color_picker("S", "#FFFFFF", key="s_c", label_visibility="collapsed")
+        s_color = st.color_picker("S", "#FFFFFF", key="s_cp", label_visibility="collapsed")
         
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
         st.divider()
         st.markdown("### 🖋️ Note Typography")
-        note_size = st.slider("Letter Size", 8, 36, 12)
-        note_font = st.selectbox("Letter Type", ["Courier New", "Georgia", "Times New Roman", "Arial"])
+        note_size = st.slider("Letter Size", 8, 30, 12)
+        note_font = st.selectbox("Letter Type", ["Courier New", "Times New Roman", "Georgia", "Arial"])
 
         st.divider()
-        st.markdown
+        st.markdown("### 🖼️ Illustrations")
+        uploads = st.file_uploader("Upload Images", accept_multiple_files=True, label_visibility="collapsed")
+        if uploads:
+            for up in uploads:
+                st.session_state.img_lib[up.name] = up
+                st.code(f"[IMG: {up.name}]")
+
+    # Documentation: Refined to ensure visibility
+    with st.expander("📖 HOW TO COMPOSE YOUR TEXT"):
+        st.markdown("""
+        **Commands for your .txt file:**
+        * `[TITLE: Text]` → Gothic Title (using Title Color).
+        * `[SUB: Text]` → Gothic Subtitle (using Subtitle Color).
+        * `[IMG: filename.png]` → Inserts an image from your uploads.
+        * **Standard Text** → Formatted using the **Note Typography** settings above.
+        """)
+
+    st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
+    notepads = st.file_uploader("Main Content", accept_multiple_files=True, label_visibility="collapsed")
+
+    if notepads and st.button("🚀 Build A4 Horizontal Book"):
+        doc = Document()
+        section = doc.sections[0]
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = Cm(29.7), Cm(21.0)
+        section.left_margin = section.right_margin = section.top_margin = section.bottom_margin = Cm(1.5)
+
+        pg_num = 1
+        for note in notepads:
+            lines = note.read().decode("utf-8").split('\n')
+            table = doc.add_table(rows=2, cols=2)
+            table.autofit = False
+            cell_l = table.rows[0].cells[0]
+            current_y = 2.0
+            
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                
+                if line.startswith("[TITLE:"):
+                    txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 85), 10, 2, current_y)
+                    current_y += 3.5
+                    for _ in range(4): cell_l.add_paragraph()
+
+                elif line.startswith("[SUB:"):
+                    txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 55), 7, 2, current_y)
+                    current_y += 2.0
+                    for _ in range(2): cell_l.add_paragraph()
+                
+                elif line.startswith("[IMG:"):
+                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
+                    if name in st.session_state.img_lib:
+                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
+                        current_y += 6.5
+                
+                else:
+                    p = cell_l.add_paragraph(line)
+                    run = p.runs[0] if p.runs else p.add_run(line)
+                    run.font.name = note_font
+                    run.font.size = Pt(note_size)
+                    p.paragraph_format.first_line_indent = 0
+            
+            table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            pg_num += 2
+            doc.add_page_break()
+
+        out = io.BytesIO()
+        doc.save(out)
+        st.download_button("📥 Download Book", out.getvalue(), "gothic_spreads.docx")
+
+if __name__ == "__main__":
+    main()
