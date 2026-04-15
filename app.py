@@ -146,22 +146,22 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.markdown("### 🎨 Colors")
-        st.write("Title Color")
+        st.markdown("🎨")
+        st.write("_")
         t_color = st.color_picker("Title Color", "#8B0000", key="t_cp")
-        st.write("Subtitle Color")
+        st.write("_")
         s_color = st.color_picker("Subtitle Color", "#FFFFFF", key="s_cp")
         
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
         st.divider()
-        st.markdown("### 🖋️ Note Typography")
+        st.markdown("🖋️")
         note_size = st.slider("Letter Size", 8, 30, 12)
         note_font = st.selectbox("Letter Type", ["Courier New", "Times New Roman", "Georgia", "Arial"])
 
         st.divider()
-        st.markdown("### 🖼️ Illustrations")
+        st.markdown("🖼️")
         uploads = st.file_uploader("Upload Images", accept_multiple_files=True)
         if uploads:
             for up in uploads:
