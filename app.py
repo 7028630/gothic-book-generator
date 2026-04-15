@@ -71,7 +71,7 @@ st.markdown("""
     }
     /* Target the copy button specifically */
     div[data-testid="stCodeBlock"] button {
-        background-color: #696969 !important;
+        background-color: #000000 !important;
         color: white !important;
     }
 
