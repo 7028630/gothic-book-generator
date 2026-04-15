@@ -40,7 +40,7 @@ st.markdown("""
 
     /* Uploader Text specifically */
     [data-testid="stFileUploaderDropzoneInstructions"] {
-        color: #000000 !important; /* Keep the 'Browse files' text dark for contrast on the light-gray box */
+        color: #000000 !important; 
     }
 
     /* Input Boxes: Light Gray background */
@@ -49,17 +49,19 @@ st.markdown("""
         border: 1px solid #ffffff !important;
     }
 
-    /* Buttons */
+    /* Buttons - Forced Black Text */
     .stButton>button {
         background-color: #696969;
-        color: white;
+        color: #000000 !important; /* Always Black */
         border: 2px solid #ffffff;
         font-family: 'Courier New', Courier, monospace;
         border-radius: 0px;
+        font-weight: bold;
     }
     
     .stButton>button:hover {
-        background-color: #000000;
+        background-color: #ffffff; /* Contrast shift on hover */
+        color: #000000 !important; /* Stay Black */
         border: 2px solid #000000;
     }
 
@@ -157,7 +159,6 @@ def main():
 
         pg_num = 1
         for note in notepads:
-            # Sort files by name if multiple are uploaded
             lines = note.read().decode("utf-8").split('\n')
             
             table = doc.add_table(rows=2, cols=2)
