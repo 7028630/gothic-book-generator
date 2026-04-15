@@ -78,8 +78,8 @@ st.markdown("""
     /* 6. Uploader Section */
     [data-testid="stFileUploader"] section {
         background-color: #333333 !important;
-        border: 1px dashed #ffffff !important;
-        color: #ffffff !important;
+        border: 1px dashed #000000 !important;
+        color: #000000 !important;
     }
 
     /* 7. Main Buttons */
