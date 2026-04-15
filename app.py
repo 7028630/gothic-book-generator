@@ -150,7 +150,7 @@ def main():
         rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
         st.divider()
-        st.write("🖼️ **IMAGE RECEPTOR**")
+        st.write("🖼️")
         # label_visibility="collapsed" is the official way to stop overlaps
         uploads = st.file_uploader("Illustrations", accept_multiple_files=True, label_visibility="collapsed")
         if uploads:
@@ -159,7 +159,7 @@ def main():
                 st.write(f"Ref: `{up.name}`")
                 st.code(f"[IMG: {up.name}]", language="text")
 
-    st.write("🏛️ **1. COMPILE CHAPTERS**")
+    st.write("🏛️ **UPLOAD MAIN TEXT AS ONE .TXT FILE**")
     notepads = st.file_uploader("Notepads", accept_multiple_files=True, label_visibility="collapsed")
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
