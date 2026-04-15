@@ -3,94 +3,172 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 import io
 import re
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
-# ... (Keep previous image processing functions: process_no_bg, create_gothic_png, add_floating_img)
+# ============================================================
+#  GOTHIC UI STYLING (Gray Scales & Courier New)
+# ============================================================
+
+st.markdown("""
+    <style>
+    /* Main background: Dark Gray */
+    .stApp {
+        background-color: #2b2b2b;
+        color: #d3d3d3;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    /* Sidebar: Lighter Gray */
+    [data-testid="stSidebar"] {
+        background-color: #404040;
+    }
+    /* Input Boxes and Widgets */
+    .stTextArea textarea, .stFileUploader section {
+        background-color: #d3d3d3 !important;
+        color: #000000 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+    /* Headers */
+    h1, h2, h3 {
+        color: #ffffff !important;
+    }
+    /* Buttons */
+    .stButton>button {
+        background-color: #696969;
+        color: white;
+        border: 1px solid #d3d3d3;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ============================================================
+#  GOTHIC ASSET GENERATORS
+# ============================================================
+
+def get_gothic_title(text, color_rgb, font_size=80):
+    try:
+        font = ImageFont.truetype("Friedolin.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+    
+    left, top, right, bottom = font.getbbox(text)
+    img = Image.new('RGBA', (right-left + 40, bottom-top + 40), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(img)
+    draw.text((20, 20), text, font=font, fill=color_rgb)
+    
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+# ============================================================
+#  WORD LAYOUT ENGINE
+# ============================================================
+
+def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
+    run = doc.add_paragraph().add_run()
+    shape = run.add_picture(img_buf, width=Cm(width_cm))
+    inline = shape._inline
+    anchor = OxmlElement('wp:anchor')
+    anchor.set('distT', '0'); anchor.set('distB', '0'); anchor.set('distL', '0'); anchor.set('distR', '0')
+    anchor.set('simplePos', '0'); anchor.set('relativeHeight', '251658240')
+    anchor.set('behindDoc', '0'); anchor.set('locked', '0')
+    anchor.set('layoutInCell', '1'); anchor.set('allowOverlap', '1')
+    
+    posH = OxmlElement('wp:positionH'); posH.set('relativeFrom', 'page')
+    posH.append(OxmlElement('wp:posOffset'))
+    posH.find(qn('wp:posOffset')).text = str(int(x_cm * 360000))
+    
+    posV = OxmlElement('wp:positionV'); posV.set('relativeFrom', 'page')
+    posV.append(OxmlElement('wp:posOffset'))
+    posV.find(qn('wp:posOffset')).text = str(int(y_cm * 360000))
+    
+    anchor.append(posH); anchor.append(posV)
+    for child in inline:
+        if child.tag != qn('wp:docPr') and child.tag != qn('wp:cNvGraphicFramePr'):
+            anchor.append(child)
+    inline.getparent().replace(inline, anchor)
+
+# ============================================================
+#  MAIN APP
+# ============================================================
 
 def main():
-    st.set_page_config(page_title="Gothic Booklet Architect", layout="wide")
-    
-    # Initialize Image Library in Session State
-    if 'img_library' not in st.session_state:
-        st.session_state.img_library = {}
+    # Render the Main Title as a PNG in the UI for consistent Gothic feel
+    title_png = get_gothic_title("Gothic Book Generator", (255, 255, 255), 100)
+    st.image(title_png, use_container_width=True)
+
+    if 'img_lib' not in st.session_state: st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.header("🎨 Aesthetic Controls")
-        t_color = st.color_picker("Gothic Letter Color", "#8B0000")
-        m_size = st.slider("Main Text Size", 8, 12, 10)
+        st.header("🎨 Styling")
+        t_color = st.color_picker("Gothic Color", "#8B0000")
+        rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
         st.divider()
         st.header("🖼️ Image Receptor")
-        uploaded_imgs = st.file_uploader("Upload Illustrations", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
-        
-        if uploaded_imgs:
-            for img in uploaded_imgs:
-                # Store image and show copy-paste code
-                st.session_state.img_library[img.name] = img
-                st.image(img, width=100)
-                st.code(f"[IMG: {img.name}]", language="text")
-                if st.button(f"Rename {img.name}", key=f"ren_{img.name}"):
-                    new_name = st.text_input("New Name", value=img.name)
-                    # Logic to update key in dictionary...
+        uploads = st.file_uploader("Upload Illustrations", accept_multiple_files=True)
+        if uploads:
+            for up in uploads:
+                st.session_state.img_lib[up.name] = up
+                st.code(f"[IMG: {up.name}]")
 
-    st.title("🏛️ Gothic Horizontal Compiler")
-    st.info("Upload your .txt chapters. The app will generate a horizontal A4 booklet with page numbers.")
+    st.subheader("1. Compile Chapters")
+    notepads = st.file_uploader("Upload .txt Chapters", accept_multiple_files=True)
 
-    files = st.file_uploader("Drop Chapter Notepads (.txt)", accept_multiple_files=True)
+    if notepads and st.button("🚀 Build A4 Horizontal Book"):
+        doc = Document()
+        section = doc.sections[0]
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = Cm(29.7), Cm(21.0)
+        section.left_margin = section.right_margin = section.top_margin = section.bottom_margin = Cm(1.5)
 
-    if files:
-        if st.button("🚀 Build Horizontal Manuscript", type="primary"):
-            doc = Document()
+        pg_num = 1
+        for note in notepads:
+            lines = note.read().decode("utf-8").split('\n')
             
-            # --- SET HORIZONTAL A4 ---
-            section = doc.sections[0]
-            section.orientation = WD_ORIENT.LANDSCAPE
-            section.page_width, section.page_height = Cm(29.7), Cm(21.0)
-            # Narrow margins for booklet style
-            section.top_margin = section.bottom_margin = Cm(1.5)
-            section.left_margin = section.right_margin = Cm(1.5)
-
-            rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            table = doc.add_table(rows=2, cols=2)
+            table.autofit = False
             
-            total_virtual_pages = 1
-
-            for f in files:
-                raw_content = f.read().decode("utf-8")
-                # Logic to split content into two halves if it's long, 
-                # or treat each file as a new "Spread"
+            # Left virtual page content
+            cell_l = table.rows[0].cells[0]
+            current_y = 2.0
+            
+            for line in lines:
+                line = line.strip()
+                if not line: continue
                 
-                table = doc.add_table(rows=2, cols=2) # Row 1: Content, Row 2: Page Numbers
-                table.autofit = False
+                if line.startswith("[TITLE:"):
+                    txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
+                    add_floating_element(doc, get_gothic_title(txt, rgb), 8, 2, current_y)
+                    current_y += 3.0
+                    for _ in range(4): cell_l.add_paragraph()
                 
-                # Format Columns
-                for row in table.rows:
-                    for cell in row.cells:
-                        tc = cell._tc.get_or_add_tcPr()
-                        tcW = OxmlElement('w:tcW')
-                        tcW.set(qn('w:w'), str(int(13.3 * 567))) # ~13.3cm per col
-                        tcW.set(qn('w:type'), 'dxa')
-                        tcPr.append(tcW)
+                elif line.startswith("[IMG:"):
+                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
+                    if name in st.session_state.img_lib:
+                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
+                        current_y += 6.0
+                else:
+                    p = cell_l.add_paragraph(line)
+                    run = p.runs[0] if p.runs else p.add_run(line)
+                    run.font.name = 'Courier New' # Word output font
+                    p.paragraph_format.first_line_indent = 0
+            
+            # Page Numbering
+            table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            pg_num += 2
+            doc.add_page_break()
 
-                # --- CONTENT PROCESSING (Simplified for demonstration) ---
-                # This scans for your [IMG:], [SEP], and [TITLE:] tags
-                # ... (Insert Regex loop from previous response) ...
-
-                # --- PAGE NUMBERING ---
-                # Left Page Number
-                p_left = table.rows[1].cells[0].add_paragraph(str(total_virtual_pages))
-                p_left.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                # Right Page Number
-                p_right = table.rows[1].cells[1].add_paragraph(str(total_virtual_pages + 1))
-                p_right.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                total_virtual_pages += 2
-                doc.add_page_break()
-
-            buf = io.BytesIO()
-            doc.save(buf)
-            st.download_button("📥 Download Booklet", buf.getvalue(), "gothic_landscape.docx")
+        out = io.BytesIO()
+        doc.save(out)
+        st.download_button("📥 Download Book", out.getvalue(), "gothic_spreads.docx")
 
 if __name__ == "__main__":
     main()
