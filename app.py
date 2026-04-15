@@ -145,7 +145,7 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.write("🎨 **STYLING**")
+        st.write("🎨")
         t_color = st.color_picker("Color", "#8B0000", label_visibility="collapsed")
         rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
