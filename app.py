@@ -10,12 +10,12 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  GOTHIC UI STYLING (The Grayscale Industrial Theme)
+#  GOTHIC UI STYLING (Industrial Grayscale)
 # ============================================================
 
 st.markdown("""
     <style>
-    /* Hide default header */
+    /* Hide the default Streamlit header bar or match its color */
     header[data-testid="stHeader"] {
         background-color: #2b2b2b !important;
     }
@@ -27,42 +27,26 @@ st.markdown("""
         font-family: 'Courier New', Courier, monospace;
     }
     
-    /* Sidebar: Medium Gray */
+    /* Sidebar: Lighter Gray */
     [data-testid="stSidebar"] {
         background-color: #404040;
     }
 
-    /* Sidebar Containers (Styling & Image Receptor): Light Gray */
-    [data-testid="stVerticalBlock"] > div:has(div.stHeader) {
-        background-color: #d3d3d3;
-        padding: 15px;
-        border-radius: 2px;
-        margin-bottom: 10px;
-    }
-
-    /* Target the specific sidebar sections to be Light Gray with Black Text */
-    [data-testid="stSidebar"] .stVerticalBlock > div {
-        background-color: #d3d3d3;
-        padding: 10px;
-        border-radius: 0px;
-        color: #000000 !important;
-        margin-bottom: 10px;
-    }
-
-    /* Force labels and text in the sidebar to be Courier New & Black */
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] h2 {
-        color: #000000 !important;
-        font-family: 'Courier New', Courier, monospace !important;
-        font-weight: bold !important;
-    }
-
-    /* Main Body text labels remain White */
-    [data-testid="stMain"] label, [data-testid="stMain"] p {
+    /* All text labels to be White */
+    label, .stMarkdown p, .stText, p, span {
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
+    }
+
+    /* Uploader Text specifically */
+    [data-testid="stFileUploaderDropzoneInstructions"] {
+        color: #000000 !important; /* Keep the 'Browse files' text dark for contrast on the light-gray box */
+    }
+
+    /* Input Boxes: Light Gray background */
+    .stTextArea textarea, .stFileUploader section {
+        background-color: #d3d3d3 !important;
+        border: 1px solid #ffffff !important;
     }
 
     /* Buttons */
@@ -79,11 +63,10 @@ st.markdown("""
         border: 2px solid #8B0000;
     }
 
-    /* Code snippets inside Light Gray boxes */
+    /* Ref Codes */
     code {
         color: #8B0000 !important;
-        background-color: #ffffff !important;
-        border: 1px solid #000000;
+        background-color: #eeeeee !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -148,19 +131,18 @@ def main():
     if 'img_lib' not in st.session_state: 
         st.session_state.img_lib = {}
 
-    # Sidebar UI with styled boxes
     with st.sidebar:
         st.header("🎨 Styling")
         t_color = st.color_picker("Gothic Color", "#8B0000")
         rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
         st.divider()
-        
         st.header("🖼️ Image Receptor")
         uploads = st.file_uploader("Upload Illustrations", accept_multiple_files=True)
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
+                st.write(f"Ref: `{up.name}`")
                 st.code(f"[IMG: {up.name}]", language="text")
 
     st.subheader("1. Compile Chapters")
@@ -175,7 +157,9 @@ def main():
 
         pg_num = 1
         for note in notepads:
+            # Sort files by name if multiple are uploaded
             lines = note.read().decode("utf-8").split('\n')
+            
             table = doc.add_table(rows=2, cols=2)
             table.autofit = False
             
@@ -202,6 +186,7 @@ def main():
                     if p.runs: p.runs[0].font.name = 'Courier New'
                     p.paragraph_format.first_line_indent = 0
             
+            # Virtual Page Numbers
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             
