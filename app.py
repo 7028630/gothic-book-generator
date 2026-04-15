@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 st.markdown("""
     <style>
-    /* 1. Kill Top Bar and Decoration */
+    /* 1. Kill Top Bar, Decoration, and Header Background */
     header[data-testid="stHeader"], [data-testid="stDecoration"] {
         background: rgba(0,0,0,0) !important;
         background-color: transparent !important;
@@ -28,62 +28,48 @@ st.markdown("""
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 3. The Sidebar & Sidebar Text White-out */
+    /* 3. The Sidebar & Text White-out */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
-    
-    /* Force all sidebar labels and text to 100% White */
-    [data-testid="stSidebar"] .stText, 
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stMarkdown {
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
         color: #ffffff !important;
     }
 
-    /* 4. EXPANDER FIX: Keep it dark/transparent, text white */
+    /* 4. EXPANDER FIX: Prevent Gray/White Blocks */
     div[data-testid="stExpander"] {
-        background-color: rgba(0,0,0,0) !important;
+        background-color: transparent !important;
         border: 1px solid #696969 !important;
     }
-    div[data-testid="stExpander"] > details {
-        background-color: transparent !important;
-    }
-    div[data-testid="stExpander"] > details > summary {
+    div[data-testid="stExpander"] details summary {
         background-color: transparent !important;
         color: #ffffff !important;
     }
-    /* This prevents the "gray block of nothing" by ensuring internal content is visible */
+    div[data-testid="stExpander"] details summary:hover {
+        color: #8B0000 !important;
+    }
     div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
         background-color: transparent !important;
-        color: #ffffff !important;
     }
 
-    /* 5. Buttons: Black Text Force */
+    /* 5. Buttons */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
         border-radius: 0px !important;
     }
-
-    button[kind="secondary"] p, 
-    button[kind="primary"] p,
-    button div[data-testid="stMarkdownContainer"] p {
+    button p {
         color: #000000 !important;
         font-weight: 900 !important;
     }
-
-    button[kind="secondary"]:hover, button[kind="primary"]:hover {
+    button:hover {
         background-color: #ffffff !important;
-        border: 2px solid #000000 !important;
     }
-    
-    /* 6. File Uploader Box */
+
+    /* 6. Uploader */
     .stFileUploader section {
         background-color: #d3d3d3 !important;
     }
-    
     code {
         color: #8B0000 !important;
         background-color: #eeeeee !important;
@@ -102,7 +88,6 @@ def get_gothic_asset(text, color_rgb, font_size=80):
         font = ImageFont.load_default()
     
     left, top, right, bottom = font.getbbox(text)
-    # Transparent background (Alpha 0)
     img = Image.new('RGBA', (right-left + 60, bottom-top + 40), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     draw.text((30, 10), text, font=font, fill=color_rgb)
@@ -156,39 +141,39 @@ def main():
 
     with st.sidebar:
         st.markdown("### 🎨 Colors")
-        st.write("Title Color")
-        t_color = st.color_picker("T", "#8B0000", key="t_cp", label_visibility="collapsed")
-        st.write("Subtitle Color")
-        s_color = st.color_picker("S", "#FFFFFF", key="s_cp", label_visibility="collapsed")
+        t_color = st.color_picker("Title Color", "#8B0000")
+        s_color = st.color_picker("Subtitle Color", "#FFFFFF")
         
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
         st.divider()
-        st.markdown("### 🖋️ Note Typography")
-        note_size = st.slider("Letter Size", 8, 30, 12)
-        note_font = st.selectbox("Letter Type", ["Courier New", "Times New Roman", "Georgia", "Arial"])
+        st.markdown("### 🖋️ Typography")
+        main_size = st.slider("Main Text Size", 8, 30, 12)
+        # Force Note Size to be one smaller
+        note_size = main_size - 1
+        note_font = st.selectbox("Font Type", ["Courier New", "Georgia", "Times New Roman"], index=0)
 
         st.divider()
         st.markdown("### 🖼️ Illustrations")
-        uploads = st.file_uploader("Upload Images", accept_multiple_files=True, label_visibility="collapsed")
+        uploads = st.file_uploader("Assets", accept_multiple_files=True, label_visibility="collapsed")
         if uploads:
             for up in uploads:
                 st.session_state.img_lib[up.name] = up
                 st.code(f"[IMG: {up.name}]")
 
-    # Documentation: Refined to ensure visibility
     with st.expander("📖 HOW TO COMPOSE YOUR TEXT"):
-        st.markdown("""
+        st.markdown(f"""
         **Commands for your .txt file:**
         * `[TITLE: Text]` → Gothic Title (using Title Color).
         * `[SUB: Text]` → Gothic Subtitle (using Subtitle Color).
-        * `[IMG: filename.png]` → Inserts an image from your uploads.
-        * **Standard Text** → Formatted using the **Note Typography** settings above.
+        * `[SEP: filename.png]` → Pulls a specific separator image.
+        * `[IMG: filename.png]` → Pulls a standard illustration.
+        * **Standard Text** → Formatted in **{note_font}** at **{note_size}pt**.
         """)
 
     st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
-    notepads = st.file_uploader("Main Content", accept_multiple_files=True, label_visibility="collapsed")
+    notepads = st.file_uploader("Main File", accept_multiple_files=True, label_visibility="collapsed")
 
     if notepads and st.button("🚀 Build A4 Horizontal Book"):
         doc = Document()
@@ -211,22 +196,23 @@ def main():
                 
                 if line.startswith("[TITLE:"):
                     txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 85), 10, 2, current_y)
-                    current_y += 3.5
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
+                    current_y += 3.0
                     for _ in range(4): cell_l.add_paragraph()
 
                 elif line.startswith("[SUB:"):
                     txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 55), 7, 2, current_y)
+                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
                     current_y += 2.0
                     for _ in range(2): cell_l.add_paragraph()
                 
-                elif line.startswith("[IMG:"):
-                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
+                elif line.startswith("[SEP:") or line.startswith("[IMG:"):
+                    name = re.search(r"\[(?:SEP|IMG): (.*?)\]", line).group(1)
                     if name in st.session_state.img_lib:
-                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
-                        current_y += 6.5
-                
+                        # Separators typically sit centered, Illustrations float
+                        width = 12 if "SEP" in line else 6
+                        add_floating_element(doc, st.session_state.img_lib[name], width, 3, current_y)
+                        current_y += 3.0 if "SEP" in line else 6.5
                 else:
                     p = cell_l.add_paragraph(line)
                     run = p.runs[0] if p.runs else p.add_run(line)
