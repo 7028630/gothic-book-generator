@@ -59,8 +59,8 @@ st.markdown("""
     }
     
     .stButton>button:hover {
-        background-color: #8B0000;
-        border: 2px solid #8B0000;
+        background-color: #000000;
+        border: 2px solid #000000;
     }
 
     /* Ref Codes */
@@ -132,12 +132,12 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
-        st.header("🎨 Styling")
+        st.header("🎨")
         t_color = st.color_picker("Gothic Color", "#8B0000")
         rgb = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
         st.divider()
-        st.header("🖼️ Image Receptor")
+        st.header("🖼️")
         uploads = st.file_uploader("Upload Illustrations", accept_multiple_files=True)
         if uploads:
             for up in uploads:
