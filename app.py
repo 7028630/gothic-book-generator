@@ -60,30 +60,37 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-   /* 5. CODE BLOCKS / COPY BUTTONS: Total Blackout */
-    div[data-testid="stCodeBlock"] {
+/* 5. CODE BLOCKS / COPY BUTTONS: Total Blackout */
+    /* Target the entire code block container */
+    div[data-testid="stCodeBlock"], 
+    div[data-testid="stCodeBlock"] > div, 
+    div[data-testid="stCodeBlock"] pre {
         background-color: #000000 !important;
         border: 1px solid #696969 !important;
-        border-radius: 4px;
     }
+
+    /* Target the actual text/code inside */
     div[data-testid="stCodeBlock"] code {
         color: #ffffff !important;
         background-color: #000000 !important;
-        font-family: 'Courier New', Courier, monospace !important;
     }
-    /* The container around the code */
-    div[data-testid="stCodeBlock"] > div {
-        background-color: #000000 !important;
-    }
-    /* The Copy Button - Forced to Black */
+
+    /* Target the Copy-to-Clipboard Button */
     div[data-testid="stCodeBlock"] button {
         background-color: #000000 !important;
-        color: white !important;
+        color: #ffffff !important;
         border: 1px solid #696969 !important;
     }
+
+    /* Hover effect so you know it's a button, but keep it dark */
     div[data-testid="stCodeBlock"] button:hover {
-        background-color: #2b2b2b !important;
+        background-color: #1a1a1a !important;
         border: 1px solid #ffffff !important;
+    }
+
+    /* Ensure the "Ref:" text doesn't create a white artifact */
+    [data-testid="stVerticalBlock"] div.stText {
+        background-color: transparent !important;
     }
 
     /* 6. Uploader Section */
