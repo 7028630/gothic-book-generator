@@ -60,42 +60,26 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-/* 5. CODE BLOCKS / COPY BUTTONS: Forced Blackout */
-    /* Target every layer of the code block container */
-    div[data-testid="stCodeBlock"], 
-    div[data-testid="stCodeBlock"] > div, 
-    div[data-testid="stCodeBlock"] pre,
-    div[data-testid="stCodeBlock"] code {
-        background-color: #000000 !important;
+    /* 5. CODE BLOCKS / COPY BUTTONS: Gray Scale Fix */
+    code {
         color: #ffffff !important;
+        background-color: #404040 !important; /* Dark Gray */
         border: 1px solid #696969 !important;
     }
-
-    /* Target the copy button - Black background */
+    div[data-testid="stCodeBlock"] {
+        background-color: #404040 !important;
+    }
+    /* Target the copy button specifically */
     div[data-testid="stCodeBlock"] button {
-        background-color: #000000 !important;
-        color: #ffffff !important;
-        border: 1px solid #696969 !important;
-        opacity: 0.8;
-    }
-
-    /* Keep it black on hover but brighten the border */
-    div[data-testid="stCodeBlock"] button:hover {
-        background-color: #000000 !important;
-        border: 1px solid #ffffff !important;
-        opacity: 1;
-    }
-
-    /* Fix the area around the "Ref:" text to stay dark */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
-        background-color: transparent !important;
+        background-color: #696969 !important;
+        color: white !important;
     }
 
     /* 6. Uploader Section */
     [data-testid="stFileUploader"] section {
         background-color: #333333 !important;
-        border: 1px dashed #000000 !important;
-        color: #000000 !important;
+        border: 1px dashed #ffffff !important;
+        color: #ffffff !important;
     }
 
     /* 7. Main Buttons */
