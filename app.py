@@ -10,25 +10,22 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  THE "NUCLEAR" CSS OVERRIDE - PRECISION REPAIR
+# THE "NUCLEAR" CSS OVERRIDE - PRECISION REPAIR
 # ============================================================
 
 st.markdown("""
     <style>
-    /* 1. Kill Top Bar and Decoration */
     header[data-testid="stHeader"], [data-testid="stDecoration"] {
         background: rgba(0,0,0,0) !important;
         background-color: transparent !important;
     }
 
-    /* 2. Global Dark Theme */
     .stApp {
         background-color: #2b2b2b !important;
         color: #ffffff !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 3. The Sidebar - Force White on Dark */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
@@ -39,50 +36,29 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* 4. EXPANDER FIX: Anti-Whiteout Logic */
     div[data-testid="stExpander"] {
         background-color: transparent !important;
         border: 1px solid #696969 !important;
     }
-    div[data-testid="stExpander"] details {
-        background-color: transparent !important;
-    }
     div[data-testid="stExpander"] details summary {
-        background-color: transparent !important;
         color: #ffffff !important;
-    }
-    div[data-testid="stExpander"] details[open] > summary {
-        background-color: transparent !important;
-        color: #ffffff !important;
-        border-bottom: 1px solid #696969;
-    }
-    div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
-        background-color: transparent !important;
     }
 
-    /* 5. CODE BLOCKS / COPY BUTTONS: Gray Scale Fix */
     code {
         color: #ffffff !important;
-        background-color: #404040 !important; /* Dark Gray */
+        background-color: #404040 !important;
         border: 1px solid #696969 !important;
     }
     div[data-testid="stCodeBlock"] {
         background-color: #404040 !important;
     }
-    /* Target the copy button specifically */
-    div[data-testid="stCodeBlock"] button {
-        background-color: #696969 !important;
-        color: white !important;
-    }
 
-    /* 6. Uploader Section */
     [data-testid="stFileUploader"] section {
         background-color: #333333 !important;
         border: 1px dashed #ffffff !important;
         color: #ffffff !important;
     }
 
-    /* 7. Main Buttons */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
@@ -99,11 +75,12 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ============================================================
-#  ASSET GENERATORS
+# ASSET GENERATORS & FIXED WORD LOGIC
 # ============================================================
 
 def get_gothic_asset(text, color_rgb, font_size=80):
     try:
+        # Ensure Friedolin.ttf is in your script folder
         font = ImageFont.truetype("Friedolin.ttf", font_size)
     except:
         font = ImageFont.load_default()
@@ -119,31 +96,52 @@ def get_gothic_asset(text, color_rgb, font_size=80):
     return buf
 
 def add_floating_element(doc, img_buf, width_cm, x_cm, y_cm):
+    """
+    Fixed version that maintains the mandatory XML sequence for Word 
+    to prevent "File is Corrupt" errors.
+    """
     run = doc.add_paragraph().add_run()
     shape = run.add_picture(img_buf, width=Cm(width_cm))
+    
     inline = shape._inline
+    extent = inline.extent
+    docPr = inline.docPr
+    graphic = inline.graphic
+    
+    # Create Anchor element (Floating)
     anchor = OxmlElement('wp:anchor')
     anchor.set('distT', '0'); anchor.set('distB', '0'); anchor.set('distL', '0'); anchor.set('distR', '0')
     anchor.set('simplePos', '0'); anchor.set('relativeHeight', '251658240')
     anchor.set('behindDoc', '0'); anchor.set('locked', '0')
     anchor.set('layoutInCell', '1'); anchor.set('allowOverlap', '1')
+
+    # Position Elements
+    posH = OxmlElement('wp:positionH')
+    posH.set('relativeFrom', 'page')
+    posOffsetH = OxmlElement('wp:posOffset')
+    posOffsetH.text = str(int(x_cm * 360000)) # Convert cm to EMUs
+    posH.append(posOffsetH)
     
-    posH = OxmlElement('wp:positionH'); posH.set('relativeFrom', 'page')
-    posH.append(OxmlElement('wp:posOffset'))
-    posH.find(qn('wp:posOffset')).text = str(int(x_cm * 360000))
+    posV = OxmlElement('wp:positionV')
+    posV.set('relativeFrom', 'page')
+    posOffsetV = OxmlElement('wp:posOffset')
+    posOffsetV.text = str(int(y_cm * 360000))
+    posV.append(posOffsetV)
     
-    posV = OxmlElement('wp:positionV'); posV.set('relativeFrom', 'page')
-    posV.append(OxmlElement('wp:posOffset'))
-    posV.find(qn('wp:posOffset')).text = str(int(y_cm * 360000))
+    # ASSEMBLY (Order Matters!)
+    anchor.append(OxmlElement('wp:simplePos'))
+    anchor.append(posH)
+    anchor.append(posV)
+    anchor.append(extent)
+    anchor.append(OxmlElement('wp:effectExtent'))
+    anchor.append(docPr)
+    anchor.append(graphic)
     
-    anchor.append(posH); anchor.append(posV)
-    for child in inline:
-        if child.tag != qn('wp:docPr') and child.tag != qn('wp:cNvGraphicFramePr'):
-            anchor.append(child)
+    # Replace the inline image with the floating anchor image
     inline.getparent().replace(inline, anchor)
 
 # ============================================================
-#  MAIN APP
+# MAIN APP
 # ============================================================
 
 def main():
@@ -184,9 +182,8 @@ def main():
         * `[TITLE: Text]` → Gothic Title (using Title Color).
         * `[SUB: Text]` → Gothic Subtitle (using Subtitle Color).
         * `[IMG: filename.png]` → Inserts an illustration.
-        * `[NOTE_START]` → Inserts `Separator.png` and starts **{note_size}pt** text.
-        * `[NOTE_END]` → Inserts `Separator.png` and returns to **{main_size}pt** text.
-        * **Standard Text** → Formatted at **{main_size}pt**.
+        * `[NOTE_START]` → Starts **{note_size}pt** text.
+        * `[NOTE_END]` → Returns to **{main_size}pt** text.
         """)
 
     st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
@@ -202,6 +199,8 @@ def main():
         pg_num = 1
         for note in notepads:
             lines = note.read().decode("utf-8").split('\n')
+            
+            # Setup Page Table (Two Column Spreads)
             table = doc.add_table(rows=2, cols=2)
             table.autofit = False
             cell_l = table.rows[0].cells[0]
@@ -227,29 +226,35 @@ def main():
                     continue
 
                 if line.startswith("[TITLE:"):
-                    txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
-                    current_y += 3.0
-                    for _ in range(4): cell_l.add_paragraph()
+                    match = re.search(r"\[TITLE: (.*?)\]", line)
+                    if match:
+                        txt = match.group(1)
+                        add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
+                        current_y += 3.0
+                        for _ in range(4): cell_l.add_paragraph()
 
                 elif line.startswith("[SUB:"):
-                    txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
-                    current_y += 2.0
-                    for _ in range(2): cell_l.add_paragraph()
+                    match = re.search(r"\[SUB: (.*?)\]", line)
+                    if match:
+                        txt = match.group(1)
+                        add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
+                        current_y += 2.0
+                        for _ in range(2): cell_l.add_paragraph()
                 
                 elif line.startswith("[IMG:"):
-                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
-                    if name in st.session_state.img_lib:
-                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
-                        current_y += 6.5
+                    match = re.search(r"\[IMG: (.*?)\]", line)
+                    if match:
+                        name = match.group(1)
+                        if name in st.session_state.img_lib:
+                            add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
+                            current_y += 6.5
                 else:
                     p = cell_l.add_paragraph(line)
                     run = p.runs[0] if p.runs else p.add_run(line)
                     run.font.name = note_font
                     run.font.size = Pt(note_size) if in_commentary else Pt(main_size)
-                    p.paragraph_format.first_line_indent = 0
             
+            # Page Numbering
             table.rows[1].cells[0].add_paragraph(str(pg_num)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             table.rows[1].cells[1].add_paragraph(str(pg_num + 1)).alignment = WD_ALIGN_PARAGRAPH.CENTER
             pg_num += 2
