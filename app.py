@@ -10,7 +10,7 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  THE "NUCLEAR" CSS OVERRIDE - RECALIBRATED
+#  THE "NUCLEAR" CSS OVERRIDE - PRECISION REPAIR
 # ============================================================
 
 st.markdown("""
@@ -28,12 +28,10 @@ st.markdown("""
         font-family: 'Courier New', Courier, monospace !important;
     }
 
-    /* 3. The Sidebar - Forced Visibility */
+    /* 3. The Sidebar - Force White on Dark */
     [data-testid="stSidebar"] {
         background-color: #404040 !important;
     }
-    
-    /* Make Sidebar Headers and Labels White */
     [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p, 
@@ -41,33 +39,50 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* 4. EXPANDER: Transparent & White Text */
+    /* 4. EXPANDER FIX: Anti-Whiteout Logic */
     div[data-testid="stExpander"] {
         background-color: transparent !important;
         border: 1px solid #696969 !important;
     }
+    div[data-testid="stExpander"] details {
+        background-color: transparent !important;
+    }
     div[data-testid="stExpander"] details summary {
+        background-color: transparent !important;
         color: #ffffff !important;
     }
+    div[data-testid="stExpander"] details[open] > summary {
+        background-color: transparent !important;
+        color: #ffffff !important;
+        border-bottom: 1px solid #696969;
+    }
+    div[data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+        background-color: transparent !important;
+    }
 
-    /* 5. THE UPLOADER FIX: No more white-on-white */
+    /* 5. CODE BLOCKS / COPY BUTTONS: Gray Scale Fix */
+    code {
+        color: #ffffff !important;
+        background-color: #404040 !important; /* Dark Gray */
+        border: 1px solid #696969 !important;
+    }
+    div[data-testid="stCodeBlock"] {
+        background-color: #404040 !important;
+    }
+    /* Target the copy button specifically */
+    div[data-testid="stCodeBlock"] button {
+        background-color: #696969 !important;
+        color: white !important;
+    }
+
+    /* 6. Uploader Section */
     [data-testid="stFileUploader"] section {
-        background-color: #333333 !important; /* Dark background */
+        background-color: #333333 !important;
         border: 1px dashed #ffffff !important;
         color: #ffffff !important;
     }
-    [data-testid="stFileUploader"] label {
-        color: #ffffff !important;
-    }
 
-    /* 6. Code Blocks (The Prompt Library) */
-    code {
-        color: #00ff00 !important; /* Neon green for visibility */
-        background-color: #1a1a1a !important;
-        border: 1px solid #444 !important;
-    }
-
-    /* 7. Buttons */
+    /* 7. Main Buttons */
     button[kind="secondary"], button[kind="primary"] {
         background-color: #696969 !important;
         border: 2px solid #ffffff !important;
@@ -156,7 +171,6 @@ def main():
 
         st.divider()
         st.markdown("### 🖼️ Illustrations")
-        # Second illustrations section (uploader)
         uploads = st.file_uploader("Upload Assets", accept_multiple_files=True)
         if uploads:
             for up in uploads:
@@ -172,7 +186,7 @@ def main():
         * `[IMG: filename.png]` → Inserts an illustration.
         * `[NOTE_START]` → Inserts `Separator.png` and starts **{note_size}pt** text.
         * `[NOTE_END]` → Inserts `Separator.png` and returns to **{main_size}pt** text.
-        * **Standard Text** → Just type! It uses **{main_size}pt**.
+        * **Standard Text** → Formatted at **{main_size}pt**.
         """)
 
     st.write("🏛️ **UPLOAD MAIN TEXT (.TXT)**")
