@@ -109,6 +109,7 @@ def get_gothic_asset(text, color_rgb, font_size=80):
         font = ImageFont.load_default()
     
     left, top, right, bottom = font.getbbox(text)
+    # The (255, 255, 255, 0) ensures the background is fully transparent
     img = Image.new('RGBA', (right-left + 60, bottom-top + 40), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     draw.text((30, 10), text, font=font, fill=color_rgb)
@@ -157,8 +158,26 @@ def main():
         st.session_state.img_lib = {}
 
     with st.sidebar:
+        st.markdown("### 🖼️ PNG Title Generator")
+        png_text = st.text_input("Gothic Text for PNG", "My Gothic Title")
+        png_size = st.number_input("PNG Font Size", 10, 300, 100)
+        if st.button("✨ Generate PNG"):
+            # Uses the Title Color selected below
+            t_color_current = st.session_state.get('t_color_picker', "#8B0000")
+            rgb_gen = tuple(int(t_color_current.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            
+            gen_buf = get_gothic_asset(png_text, rgb_gen, png_size)
+            st.image(gen_buf, caption="Preview (Transparent)")
+            st.download_button(
+                label="💾 Download Transparent PNG",
+                data=gen_buf.getvalue(),
+                file_name=f"{png_text.replace(' ', '_')}.png",
+                mime="image/png"
+            )
+
+        st.divider()
         st.markdown("### 🎨 Colors")
-        t_color = st.color_picker("Title Color", "#8B0000")
+        t_color = st.color_picker("Title Color", "#8B0000", key='t_color_picker')
         s_color = st.color_picker("Subtitle Color", "#FFFFFF")
         rgb_title = tuple(int(t_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         rgb_sub = tuple(int(s_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
@@ -227,22 +246,28 @@ def main():
                     continue
 
                 if line.startswith("[TITLE:"):
-                    txt = re.search(r"\[TITLE: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
-                    current_y += 3.0
-                    for _ in range(4): cell_l.add_paragraph()
+                    txt_match = re.search(r"\[TITLE: (.*?)\]", line)
+                    if txt_match:
+                        txt = txt_match.group(1)
+                        add_floating_element(doc, get_gothic_asset(txt, rgb_title, 80), 9, 2, current_y)
+                        current_y += 3.0
+                        for _ in range(4): cell_l.add_paragraph()
 
                 elif line.startswith("[SUB:"):
-                    txt = re.search(r"\[SUB: (.*?)\]", line).group(1)
-                    add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
-                    current_y += 2.0
-                    for _ in range(2): cell_l.add_paragraph()
+                    txt_match = re.search(r"\[SUB: (.*?)\]", line)
+                    if txt_match:
+                        txt = txt_match.group(1)
+                        add_floating_element(doc, get_gothic_asset(txt, rgb_sub, 50), 6, 2, current_y)
+                        current_y += 2.0
+                        for _ in range(2): cell_l.add_paragraph()
                 
                 elif line.startswith("[IMG:"):
-                    name = re.search(r"\[IMG: (.*?)\]", line).group(1)
-                    if name in st.session_state.img_lib:
-                        add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
-                        current_y += 6.5
+                    name_match = re.search(r"\[IMG: (.*?)\]", line)
+                    if name_match:
+                        name = name_match.group(1)
+                        if name in st.session_state.img_lib:
+                            add_floating_element(doc, st.session_state.img_lib[name], 6, 3, current_y)
+                            current_y += 6.5
                 else:
                     p = cell_l.add_paragraph(line)
                     run = p.runs[0] if p.runs else p.add_run(line)
